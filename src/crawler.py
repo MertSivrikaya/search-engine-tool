@@ -5,6 +5,7 @@ from urllib import robotparser
 from bs4 import BeautifulSoup
 from collections import deque
 from typing import Dict, Optional
+from random import uniform
 
 class Crawler:
     """
@@ -12,18 +13,18 @@ class Crawler:
     respects robots.txt, and strictly enforces politeness policies.
     """
     
-    def __init__(self, base_url: str = "https://quotes.toscrape.com/", delay: int = 6):
+    def __init__(self, base_url: str = "https://quotes.toscrape.com/", min_delay: int = 6):
         """
         Initializes the crawler with connection pooling, User-Agent header, and robots.txt parsing.
         
         Args:
             base_url (str): The starting URL to crawl.
-            delay (int): Minimum seconds to wait between requests.
+            min_delay (int): Minimum seconds to wait between requests.
         """
         print(f"[*] Initializing...")
 
         self.base_url = base_url
-        self.delay = delay
+        self.min_delay = min_delay
         self.session = requests.Session()
 
         # Adding a User-Agent header is a good defensive programming practice
@@ -73,7 +74,7 @@ class Crawler:
 
     def fetch_page(self, url: str) -> Optional[str]:
         """
-        Fetches the HTML content of a given URL with error handling and rate limiting.
+        Fetches the HTML content of a given URL with with randomized politeness delay.
         """
         try:
             print(f"[*] Fetching: {url}")
@@ -81,8 +82,12 @@ class Crawler:
             response.raise_for_status() 
             
             # Enforce the strict politeness window
-            print(f"    -> Sleeping for {self.delay} seconds (Politeness Window)...")
-            time.sleep(self.delay) 
+            # Randomized delay: minimum delay + (0 to 2) extra seconds
+            # This makes the traffic pattern less predictable and more human
+            # to avoid triggering anti-bot measures (like firewalls) while still respecting the server's resources.
+            wait_time = self.min_delay + uniform(0, 2)  
+            print(f"    -> Sleeping for {wait_time:.2f} seconds (Politeness Window)...")
+            time.sleep(wait_time) 
             
             return response.text
             
