@@ -11,7 +11,7 @@ class TestCrawler(unittest.TestCase):
         # By patching _load_robots_txt, we prevent the crawler from hitting the 
         # real internet during initialization. The parser starts completely clean.
         with patch('src.crawler.Crawler._load_robots_txt'):
-            self.crawler = Crawler(base_url="https://example.com", min_delay=0)
+            self.crawler = Crawler(base_url="https://example.com/", min_delay=0)
 
     def test_extract_text(self):
         """Verify that HTML tags, scripts, and styles are correctly stripped."""
@@ -85,17 +85,21 @@ class TestCrawler(unittest.TestCase):
         # 1. Build a mock web dictionary
         mock_web = {
             "https://example.com/": """
-                <html><body>
-                    <h1>Home</h1>
-                    <a href='/page2'>Go to Page 2</a>
-                    <a href='/'>Loop back to Home</a>
-                </body></html>
+                <html>
+                    <body>
+                        <h1>Home</h1>
+                        <a href='/page2'>Go to Page 2</a>
+                        <a href='/'>Loop back to Home</a>
+                    </body>
+                </html>
             """,
             "https://example.com/page2": """
-                <html><body>
-                    <h1>Page 2</h1>
-                    <p>End of the line.</p>
-                </body></html>
+                <html>
+                    <body>
+                        <h1>Page 2</h1>
+                        <p>End of the line.</p>
+                    </body>
+                </html>
             """
         }
 
@@ -125,10 +129,12 @@ class TestCrawler(unittest.TestCase):
         """
         mock_web = {
             "https://example.com/": """
-                <html><body>
-                    <h1>Dead End</h1>
-                    <p>There are no links on this page.</p>
-                </body></html>
+                <html>
+                    <body>
+                        <h1>Dead End</h1>
+                        <p>There are no links on this page.</p>
+                    </body>
+                </html>
             """
         }
         mock_fetch.side_effect = lambda url: mock_web.get(url, None)
@@ -148,14 +154,20 @@ class TestCrawler(unittest.TestCase):
         """
         mock_web = {
             "https://example.com/": """
-                <html><body>
-                    <h1>Home</h1>
-                    <a href='https://youtube.com/video'>External Link</a>
-                    <a href='/internal'>Internal Link</a>
-                </body></html>
+                <html>
+                    <body>
+                        <h1>Home</h1>
+                        <a href='https://youtube.com/video'>External Link</a>
+                        <a href='/internal'>Internal Link</a>
+                    </body>
+                </html>
             """,
             "https://example.com/internal": """
-                <html><body><h1>Safe</h1></body></html>
+                <html>
+                    <body>
+                        <h1>Safe</h1>
+                    </body>
+                </html>
             """
         }
         mock_fetch.side_effect = lambda url: mock_web.get(url, None)
@@ -176,14 +188,26 @@ class TestCrawler(unittest.TestCase):
         """
         mock_web = {
             "https://example.com/": """
-                <html><body>
-                    <h1>Home</h1>
-                    <a href='/public'>Public Page</a>
-                    <a href='/admin'>Secret Admin Panel</a>
-                </body></html>
+                <html>
+                    <body>
+                        <h1>Home</h1>
+                        <a href='/public'>Public Page</a>
+                        <a href='/admin'>Secret Admin Panel</a>
+                    </body>
+                </html>
             """,
-            "https://example.com/public": "<html><body><h1>Public</h1></body></html>",
-            "https://example.com/admin": "<html><body><h1>Admin Area</h1></body></html>" # Should never be reached
+            "https://example.com/public": """
+            <html>
+                <body>
+                    <h1>Public</h1>
+                </body>
+            </html>""",
+            "https://example.com/admin": """
+            <html>
+                <body>
+                    <h1>Admin Area</h1>
+                </body>
+            </html>""" # Should never be reached
         }
         mock_fetch.side_effect = lambda url: mock_web.get(url, None)
 
