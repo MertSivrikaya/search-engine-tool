@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from collections import deque
 from typing import Dict, Optional
 from random import uniform
+import json
 
 class Crawler:
     """
@@ -169,3 +170,10 @@ if __name__ == "__main__":
     crawler = Crawler()
     # Let's test it! It will take about a minute since it sleeps for 6 seconds per page.
     data = crawler.crawl()
+
+    # Save to secondary storage ---
+    if data:
+        output_file = "crawled_data.json"
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4)
+        print(f"[+] Data successfully saved to {output_file}")
