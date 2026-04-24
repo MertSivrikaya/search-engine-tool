@@ -76,5 +76,129 @@ class TestCrawler(unittest.TestCase):
         self.assertTrue(self.crawler.rp.can_fetch(self.crawler.user_agent_name, "https://example.com/public/page"))
         self.assertFalse(self.crawler.rp.can_fetch(self.crawler.user_agent_name, "https://example.com/private/secret"))
 
+    @patch('src.crawler.Crawler.fetch_page')
+    def test_crawl_loop_prevention(self, mock_fetch):
+        """
+        Integration test: Verify the crawler successfully navigates a mocked website graph,
+        follows links, and avoids infinite loops.
+        """
+        # 1. Build a mock web dictionary
+        mock_web = {
+            "https://example.com/": """
+                <html><body>
+                    <h1>Home</h1>
+                    <a href='/page2'>Go to Page 2</a>
+                    <a href='/'>Loop back to Home</a>
+                </body></html>
+            """,
+            "https://example.com/page2": """
+                <html><body>
+                    <h1>Page 2</h1>
+                    <p>End of the line.</p>
+                </body></html>
+            """
+        }
+
+        # 2. Configure the mock to return the correct HTML for each URL
+        # If the URL isn't in our dictionary, return None (simulating a 404)
+        mock_fetch.side_effect = lambda url: mock_web.get(url, None)
+
+        # 3. Explicitly allow everything in robots.txt for this test
+        self.crawler.rp.can_fetch = MagicMock(return_value=True)
+
+        # 4. Run the crawl
+        result = self.crawler.crawl()
+
+        # 5. Assertions
+        # It should have found exactly 2 unique pages (ignoring the infinite loop link)
+        self.assertEqual(len(result), 2)
+        
+        # It should have extracted the text correctly
+        self.assertIn("Home Go to Page 2 Loop back to Home", result["https://example.com/"])
+        self.assertIn("Page 2 End of the line.", result["https://example.com/page2"])
+
+    @patch('src.crawler.Crawler.fetch_page')
+    def test_crawl_dead_end(self, mock_fetch):
+        """
+        Integration test: Verify the crawler handles an "orphan page" gracefully
+        when BeautifulSoup finds zero <a> tags.
+        """
+        mock_web = {
+            "https://example.com/": """
+                <html><body>
+                    <h1>Dead End</h1>
+                    <p>There are no links on this page.</p>
+                </body></html>
+            """
+        }
+        mock_fetch.side_effect = lambda url: mock_web.get(url, None)
+        self.crawler.rp.can_fetch = MagicMock(return_value=True)
+
+        result = self.crawler.crawl()
+
+        # It should successfully crawl the base URL and then cleanly terminate
+        self.assertEqual(len(result), 1)
+        self.assertIn("Dead End There are no links on this page.", result["https://example.com/"])
+
+    @patch('src.crawler.Crawler.fetch_page')
+    def test_crawl_external_link_trap(self, mock_fetch):
+        """
+        Integration test: Verify the crawler strictly enforces domain boundaries
+        and ignores links to external websites.
+        """
+        mock_web = {
+            "https://example.com/": """
+                <html><body>
+                    <h1>Home</h1>
+                    <a href='https://youtube.com/video'>External Link</a>
+                    <a href='/internal'>Internal Link</a>
+                </body></html>
+            """,
+            "https://example.com/internal": """
+                <html><body><h1>Safe</h1></body></html>
+            """
+        }
+        mock_fetch.side_effect = lambda url: mock_web.get(url, None)
+        self.crawler.rp.can_fetch = MagicMock(return_value=True)
+
+        result = self.crawler.crawl()
+
+        # It should find the Home page and the Internal page (2 pages), completely ignoring YouTube
+        self.assertEqual(len(result), 2)
+        self.assertNotIn("https://youtube.com/video", result)
+        self.assertIn("https://example.com/internal", result)
+
+    @patch('src.crawler.Crawler.fetch_page')
+    def test_crawl_blocked_path(self, mock_fetch):
+        """
+        Integration test: Verify the crawler obeys robots.txt rules for dynamically
+        discovered links during the crawl.
+        """
+        mock_web = {
+            "https://example.com/": """
+                <html><body>
+                    <h1>Home</h1>
+                    <a href='/public'>Public Page</a>
+                    <a href='/admin'>Secret Admin Panel</a>
+                </body></html>
+            """,
+            "https://example.com/public": "<html><body><h1>Public</h1></body></html>",
+            "https://example.com/admin": "<html><body><h1>Admin Area</h1></body></html>" # Should never be reached
+        }
+        mock_fetch.side_effect = lambda url: mock_web.get(url, None)
+
+        # Inject a strict robots.txt rule blocking the /admin path
+        self.crawler.rp.parse([
+            "User-agent: *",
+            "Disallow: /admin"
+        ])
+
+        result = self.crawler.crawl()
+
+        # It should crawl Home and Public (2 pages), but NOT the Admin page
+        self.assertEqual(len(result), 2)
+        self.assertIn("https://example.com/public", result)
+        self.assertNotIn("https://example.com/admin", result)
+
 if __name__ == '__main__':
     unittest.main()
