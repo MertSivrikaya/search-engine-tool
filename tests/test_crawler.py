@@ -13,24 +13,6 @@ class TestCrawler(unittest.TestCase):
         with patch('src.crawler.Crawler._load_robots_txt'):
             self.crawler = Crawler(base_url="https://example.com/", min_delay=0)
 
-    def test_extract_text(self):
-        """Verify that HTML tags, scripts, and styles are correctly stripped."""
-        
-        html_content = """
-        <html>
-            <style>.header { color: red; }</style>
-            <script>console.log('hello');</script>
-            <body>
-                <h1>Title</h1>
-                <p>This is a <b>test</b> quote.</p>
-            </body>
-        </html>
-        """
-        expected_text = "Title This is a test quote."
-        
-        result = self.crawler.extract_text(html_content)
-        self.assertEqual(result, expected_text)
-
     @patch('src.crawler.requests.Session.get')
     def test_fetch_page_success(self, mock_get):
         """Test fetch_page returns HTML on a 200 OK response."""
@@ -117,9 +99,12 @@ class TestCrawler(unittest.TestCase):
         # It should have found exactly 2 unique pages (ignoring the infinite loop link)
         self.assertEqual(len(result), 2)
         
-        # It should have extracted the text correctly
-        self.assertIn("Home Go to Page 2 Loop back to Home", result["https://example.com/"])
-        self.assertIn("Page 2 End of the line.", result["https://example.com/page2"])
+        # It should have extracted the HTML correctly
+        self.assertIn("<h1>Home</h1>", result["https://example.com/"]["html"])
+        self.assertIn("<h1>Page 2</h1>", result["https://example.com/page2"]["html"])
+
+        # Verify the adjacency list for outlinks
+        self.assertIn("https://example.com/page2", result["https://example.com/"]["outlinks"])
 
     @patch('src.crawler.Crawler.fetch_page')
     def test_crawl_dead_end(self, mock_fetch):
@@ -144,7 +129,9 @@ class TestCrawler(unittest.TestCase):
 
         # It should successfully crawl the base URL and then cleanly terminate
         self.assertEqual(len(result), 1)
-        self.assertIn("Dead End There are no links on this page.", result["https://example.com/"])
+        
+        self.assertIn("<h1>Dead End</h1>", result["https://example.com/"]["html"])
+        self.assertEqual(len(result["https://example.com/"]["outlinks"]), 0) # Dead end = 0 outlinks
 
     @patch('src.crawler.Crawler.fetch_page')
     def test_crawl_external_link_trap(self, mock_fetch):
@@ -178,7 +165,7 @@ class TestCrawler(unittest.TestCase):
         # It should find the Home page and the Internal page (2 pages), completely ignoring YouTube
         self.assertEqual(len(result), 2)
         self.assertNotIn("https://youtube.com/video", result)
-        self.assertIn("https://example.com/internal", result)
+        self.assertIn("https://example.com/internal", result["https://example.com/"]["outlinks"])
 
     @patch('src.crawler.Crawler.fetch_page')
     def test_crawl_blocked_path(self, mock_fetch):
@@ -223,6 +210,7 @@ class TestCrawler(unittest.TestCase):
         self.assertEqual(len(result), 2)
         self.assertIn("https://example.com/public", result)
         self.assertNotIn("https://example.com/admin", result)
+        self.assertIn("https://example.com/public", result["https://example.com/"]["outlinks"])
 
 if __name__ == '__main__':
     unittest.main()

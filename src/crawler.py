@@ -96,19 +96,6 @@ class Crawler:
             print(f"[!] Error fetching {url}: {e}")
             return None
 
-    def extract_text(self, html: str) -> str:
-        """
-        Parses HTML and extracts clean, readable text, stripping out code/styling.
-        """
-        soup = BeautifulSoup(html, 'html.parser')
-        
-        # Remove script and style elements as they don't contain indexable natural language
-        for script_or_style in soup(["script", "style"]):
-            script_or_style.extract()
-            
-        # Extract the visible text, separated by spaces, and strip leading/trailing whitespace
-        return soup.get_text(separator=' ', strip=True)
-
     def crawl(self) -> Dict[str, str]:
         """
         Crawls the website using a Queue (Frontier) and Visited Set to discover
@@ -131,18 +118,20 @@ class Crawler:
         
         while frontier:
             current_url = frontier.popleft()
-                
             html = self.fetch_page(current_url)
+
             if not html:
                 continue # Network error, skip to the next URL in the queue
                 
             seen_urls.add(current_url)
+
+            # Store the raw HTML and prepare an empty adjacency List for PageRank algorithm, that we are going to use later
+            crawled_data[current_url] = {
+                "html": html,
+                "outlinks": []
+            }
             
-            # Clean the HTML and store the text
-            text = self.extract_text(html)
-            crawled_data[current_url] = text
-            
-            # --- Link Discovery Logic ---
+            # We need to parse the HTML to find links, so we can discover new pages to crawl.
             soup = BeautifulSoup(html, 'html.parser')
             
             # Find every link on the page
@@ -150,9 +139,13 @@ class Crawler:
                 next_url = urljoin(current_url, a_tag['href'])
                 next_url = next_url.split('#')[0] # Clean anchor fragments
 
+                # Build the adjacency list (ignoring self-loops and duplicates)
+                if (self.base_url in next_url) and (next_url != current_url):
+                    if next_url not in crawled_data[current_url]["outlinks"]:
+                        crawled_data[current_url]["outlinks"].append(next_url)
+                
                 # Check if the next URL is within the same domain (we dont' want to crawl external links) and hasn't been visited
                 if (self.base_url in next_url) and (next_url not in seen_urls):
-                    
                     # Check if robots.txt permit us to crawl this URL
                     if self.rp.can_fetch(self.user_agent_name, next_url):
                         frontier.append(next_url)
