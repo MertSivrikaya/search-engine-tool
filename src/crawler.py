@@ -149,16 +149,3 @@ class Crawler:
         print(f"\n[+] Crawling complete. Successfully processed {len(crawled_data)} unique pages.")
         return crawled_data
 
-# Quick testing block
-if __name__ == "__main__":
-    print("[*] Starting crawler test...")
-    crawler = Crawler()
-    
-    data = crawler.crawl()
-
-    # Save to secondary storage
-    if data:
-        output_file = "crawled_data.json"
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
-        print(f"[+] Data successfully saved to {output_file}")
