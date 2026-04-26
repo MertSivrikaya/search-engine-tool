@@ -1,5 +1,9 @@
 import unittest
+import tempfile
+import json
+import os
 from src.search import SearchEngine
+from src.indexer import Indexer
 
 class TestSearchEngine(unittest.TestCase):
     def setUp(self):
@@ -75,6 +79,54 @@ class TestSearchEngine(unittest.TestCase):
         
         self.assertTrue(is_phrase_doc1)
         self.assertFalse(is_phrase_doc2)
+
+class TestSearchIntegration(unittest.TestCase):
+    def setUp(self):
+        # 1. Create raw mock crawled data (HTML)
+        self.mock_crawled_data = {
+            "https://example.com/hamlet": {
+                "html": "<h1>Hamlet</h1><p>to be or not to be</p>",
+                "outlinks": []
+            },
+            "https://example.com/descartes": {
+                "html": "<h1>Descartes</h1><p>I think therefore I am</p>",
+                "outlinks": []
+            }
+        }
+        
+        # Save to a temp file so the Indexer can load it
+        self.temp_crawl_file = tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.json')
+        json.dump(self.mock_crawled_data, self.temp_crawl_file)
+        self.temp_crawl_file.close()
+
+        # 2. Build the Index using the Indexer class
+        self.indexer = Indexer()
+        self.indexer.build_index(self.temp_crawl_file.name)
+        
+        # 3. Hook up the SearchEngine to the Indexer's output
+        self.searcher = SearchEngine(self.indexer.inverted_index, self.indexer.document_registry)
+
+    def tearDown(self):
+        # Clean up the temp file
+        os.unlink(self.temp_crawl_file.name)
+
+    def test_end_to_end_search(self):
+        """Tests the entire pipeline: Raw HTML -> Tokenizer -> Indexer -> SearchEngine"""
+        
+        # Search for a quote from document 1
+        results = self.searcher.find("to be or not to be")
+        
+        # It should find exactly 1 document
+        self.assertEqual(len(results), 1)
+        
+        # The URL should match our first mock document
+        self.assertEqual(results[0][1], "https://example.com/hamlet")
+        
+        # Search for a word in document 2, inside an h1 tag to implicitly test 
+        # that the HTML structure survived the journey from raw text to search multiplier
+        results_h1 = self.searcher.find("descartes")
+        self.assertEqual(len(results_h1), 1)
+        self.assertEqual(results_h1[0][1], "https://example.com/descartes")
 
 if __name__ == '__main__':
     unittest.main()
