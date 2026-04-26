@@ -127,12 +127,12 @@ class HTMLProcessor:
                         merged_extents.append(current)
                         
                 # Update the dictionary with the clean, merged list
-                index_data[tag_key]["extents"] = merged_extents
+                index_data[tag_key] = merged_extents
 
         # Clean up empty extents so we don't bloat the final JSON file
         final_index_data = {
             k: v for k, v in index_data.items() 
-            if (not k.startswith("_EXTENT_")) or (k.startswith("_EXTENT_") and v["extents"])
+            if (not k.startswith("_EXTENT_")) or (k.startswith("_EXTENT_") and v)
         }          
                              
         return final_index_data
@@ -143,10 +143,72 @@ class Indexer:
     """
     def __init__(self):
         self.document_registry = {}  # Maps DocID (int) -> URL (str)
-        self.inverted_index = {}     # Maps Word (str) -> List of tuples: (DocID, DocumentScore)
+        self.inverted_index = {}     # Maps Word (str) -> Dict[DocID, [frequency, [positions]]]
         self.processor = HTMLProcessor()
         self.next_doc_id = 1
 
     def build_index(self, crawled_data_filepath):
-        # We will read the JSON and build the dictionaries here next
-        pass
+        """
+        Reads the crawled data, assigns DocIDs, and builds the global Inverted Index.
+        """
+        print("[*] Building inverted index...")
+        with open(crawled_data_filepath, 'r', encoding='utf-8') as f:
+            crawled_data = json.load(f)
+
+        for url, data in crawled_data.items():
+            # 1. Assign DocID and update registry
+            doc_id = self.next_doc_id
+            self.document_registry[doc_id] = url
+            self.next_doc_id += 1
+
+            # 2. Process the raw HTML
+            html_content = data.get("html", "")
+            if not html_content:
+                continue
+                
+            doc_index_data = self.processor.tokenize(html_content)
+
+            # 3. Merge the document's terms into the global Inverted Index
+            for term, term_data in doc_index_data.items():
+                if term not in self.inverted_index:
+                    self.inverted_index[term] = {}
+                
+                # Map the specific DocID to its term frequencies, positions, or extents
+                self.inverted_index[term][doc_id] = term_data
+
+        print(f"\n[+] Successfully indexed {len(self.document_registry)} documents.")
+
+    def save_index(self, index_filepath, registry_filepath):
+        """
+        Saves the Inverted Index and Document Registry to the file system.
+        """
+        print(f"[*] Saving index to {index_filepath}...")
+        with open(index_filepath, 'w', encoding='utf-8') as f:
+            json.dump(self.inverted_index, f, indent=4)
+            
+        print(f"[*] Saving document registry to {registry_filepath}...")
+        with open(registry_filepath, 'w', encoding='utf-8') as f:
+            json.dump(self.document_registry, f, indent=4)
+            
+        print(f"\n[+] Save complete!")
+        
+    def load_index(self, index_filepath, registry_filepath):
+        """
+        Loads the Inverted Index and Document Registry from the file system.
+        """
+        print(f"[*] Loading index from {index_filepath}...")
+        with open(index_filepath, 'r', encoding='utf-8') as f:
+            self.inverted_index = json.load(f)
+            
+        print(f"[*] Loading document registry from {registry_filepath}...")
+        with open(registry_filepath, 'r', encoding='utf-8') as f:
+            # JSON dict keys are always strings, so we convert them back to integers
+            loaded_registry = json.load(f)
+            self.document_registry = {int(k): v for k, v in loaded_registry.items()}
+            
+        # Update next_doc_id so we don't overwrite if we build more later
+        if self.document_registry:
+            self.next_doc_id = max(self.document_registry.keys()) + 1
+            print(f"[*] Updated next document ID to {self.next_doc_id}")
+        
+        print(f"\n[+] Load complete!")
