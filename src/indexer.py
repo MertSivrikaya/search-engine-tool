@@ -5,6 +5,7 @@ from nltk.stem import PorterStemmer
 
 # Automatically download required NLTK data 
 nltk.download('punkt', quiet=True)
+nltk.download('punkt_tab', quiet=True)
 
 class HTMLProcessor:
     """
@@ -198,11 +199,16 @@ class Indexer:
         """
         print(f"[*] Loading index from {index_filepath}...")
         with open(index_filepath, 'r', encoding='utf-8') as f:
-            self.inverted_index = json.load(f)
+            raw_index = json.load(f)
+            
+            # JSON dict keys are strings. Convert the inner DocID keys back to integers
+            self.inverted_index = {}
+            for term, postings in raw_index.items():
+                self.inverted_index[term] = {int(doc_id): data for doc_id, data in postings.items()}
             
         print(f"[*] Loading document registry from {registry_filepath}...")
         with open(registry_filepath, 'r', encoding='utf-8') as f:
-            # JSON dict keys are always strings, so we convert them back to integers
+            # Convert registry keys back to integers as well
             loaded_registry = json.load(f)
             self.document_registry = {int(k): v for k, v in loaded_registry.items()}
             
