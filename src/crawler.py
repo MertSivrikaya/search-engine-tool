@@ -103,7 +103,7 @@ class Crawler:
         Checks robots.txt permissions before adding URLs to the frontier.
         
         Returns:
-            Dict[str, str]: A dictionary mapping URLs to their extracted text.
+            Dict[str, str]: A dictionary mapping URLs to their document's raw HTML content
         """
         crawled_data = {}
 
@@ -125,11 +125,8 @@ class Crawler:
                 
             seen_urls.add(current_url)
 
-            # Store the raw HTML and prepare an empty adjacency List for PageRank algorithm, that we are going to use later
-            crawled_data[current_url] = {
-                "html": html,
-                "outlinks": []
-            }
+            # Store the raw HTML
+            crawled_data[current_url] = html
             
             # We need to parse the HTML to find links, so we can discover new pages to crawl.
             soup = BeautifulSoup(html, 'html.parser')
@@ -138,11 +135,6 @@ class Crawler:
             for a_tag in soup.find_all('a', href=True):
                 next_url = urljoin(current_url, a_tag['href'])
                 next_url = next_url.split('#')[0] # Clean anchor fragments
-
-                # Build the adjacency list (ignoring self-loops and duplicates)
-                if (self.base_url in next_url) and (next_url != current_url):
-                    if next_url not in crawled_data[current_url]["outlinks"]:
-                        crawled_data[current_url]["outlinks"].append(next_url)
                 
                 # Check if the next URL is within the same domain (we dont' want to crawl external links) and hasn't been visited
                 if (self.base_url in next_url) and (next_url not in seen_urls):
@@ -159,12 +151,12 @@ class Crawler:
 
 # Quick testing block
 if __name__ == "__main__":
-    print("Starting crawler test...")
+    print("[*] Starting crawler test...")
     crawler = Crawler()
-    # Let's test it! It will take about a minute since it sleeps for 6 seconds per page.
+    
     data = crawler.crawl()
 
-    # Save to secondary storage ---
+    # Save to secondary storage
     if data:
         output_file = "crawled_data.json"
         with open(output_file, "w", encoding="utf-8") as f:

@@ -84,14 +84,8 @@ class TestSearchIntegration(unittest.TestCase):
     def setUp(self):
         # 1. Create raw mock crawled data (HTML)
         self.mock_crawled_data = {
-            "https://example.com/hamlet": {
-                "html": "<h1>Hamlet</h1><p>to be or not to be</p>",
-                "outlinks": []
-            },
-            "https://example.com/descartes": {
-                "html": "<h1>Descartes</h1><p>I think therefore I am</p>",
-                "outlinks": []
-            }
+            "https://example.com/hamlet": "<h1>Hamlet</h1><p>to be or not to be</p>",
+            "https://example.com/descartes": "<h1>Descartes</h1><p>I think therefore I am</p>"
         }
         
         # Save to a temp file so the Indexer can load it

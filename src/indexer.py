@@ -156,18 +156,17 @@ class Indexer:
         with open(crawled_data_filepath, 'r', encoding='utf-8') as f:
             crawled_data = json.load(f)
 
-        for url, data in crawled_data.items():
+        for url, raw_html in crawled_data.items():
             # 1. Assign DocID and update registry
             doc_id = self.next_doc_id
             self.document_registry[doc_id] = url
             self.next_doc_id += 1
 
             # 2. Process the raw HTML
-            html_content = data.get("html", "")
-            if not html_content:
+            if not raw_html:
                 continue
                 
-            doc_index_data = self.processor.tokenize(html_content)
+            doc_index_data = self.processor.tokenize(raw_html)
 
             # 3. Merge the document's terms into the global Inverted Index
             for term, term_data in doc_index_data.items():

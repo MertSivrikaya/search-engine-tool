@@ -58,14 +58,8 @@ class TestIndexerIntegration(unittest.TestCase):
     def setUp(self):
         # Create a mock crawled_data.json structure
         self.mock_crawled_data = {
-            "https://example.com/1": {
-                "html": "<h1>Data structures</h1><p>are fun</p>",
-                "outlinks": []
-            },
-            "https://example.com/2": {
-                "html": "<title>Data</title>",
-                "outlinks": []
-            }
+            "https://example.com/1": "<h1>Data structures</h1><p>are fun</p>",
+            "https://example.com/2": "<title>Data</title>"
         }
         
         # Create temporary files for our tests to read/write to safely

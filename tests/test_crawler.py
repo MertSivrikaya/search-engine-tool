@@ -100,11 +100,8 @@ class TestCrawler(unittest.TestCase):
         self.assertEqual(len(result), 2)
         
         # It should have extracted the HTML correctly
-        self.assertIn("<h1>Home</h1>", result["https://example.com/"]["html"])
-        self.assertIn("<h1>Page 2</h1>", result["https://example.com/page2"]["html"])
-
-        # Verify the adjacency list for outlinks
-        self.assertIn("https://example.com/page2", result["https://example.com/"]["outlinks"])
+        self.assertIn("<h1>Home</h1>", result["https://example.com/"])
+        self.assertIn("<h1>Page 2</h1>", result["https://example.com/page2"])
 
     @patch('src.crawler.Crawler.fetch_page')
     def test_crawl_dead_end(self, mock_fetch):
@@ -130,8 +127,7 @@ class TestCrawler(unittest.TestCase):
         # It should successfully crawl the base URL and then cleanly terminate
         self.assertEqual(len(result), 1)
         
-        self.assertIn("<h1>Dead End</h1>", result["https://example.com/"]["html"])
-        self.assertEqual(len(result["https://example.com/"]["outlinks"]), 0) # Dead end = 0 outlinks
+        self.assertIn("<h1>Dead End</h1>", result["https://example.com/"])
 
     @patch('src.crawler.Crawler.fetch_page')
     def test_crawl_external_link_trap(self, mock_fetch):
@@ -165,7 +161,6 @@ class TestCrawler(unittest.TestCase):
         # It should find the Home page and the Internal page (2 pages), completely ignoring YouTube
         self.assertEqual(len(result), 2)
         self.assertNotIn("https://youtube.com/video", result)
-        self.assertIn("https://example.com/internal", result["https://example.com/"]["outlinks"])
 
     @patch('src.crawler.Crawler.fetch_page')
     def test_crawl_blocked_path(self, mock_fetch):
@@ -210,7 +205,6 @@ class TestCrawler(unittest.TestCase):
         self.assertEqual(len(result), 2)
         self.assertIn("https://example.com/public", result)
         self.assertNotIn("https://example.com/admin", result)
-        self.assertIn("https://example.com/public", result["https://example.com/"]["outlinks"])
 
 if __name__ == '__main__':
     unittest.main()
