@@ -118,3 +118,6 @@ def main():
         except KeyboardInterrupt:
             print("\n[*] Shutting down search engine. Goodbye!")
             sys.exit(0)
+
+if __name__ == "__main__":
+    main()
