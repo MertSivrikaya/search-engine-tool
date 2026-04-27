@@ -6,7 +6,6 @@ from bs4 import BeautifulSoup
 from collections import deque
 from typing import Dict, Optional
 from random import uniform
-import json
 
 class Crawler:
     """
@@ -14,7 +13,7 @@ class Crawler:
     respects robots.txt, and strictly enforces politeness policies.
     """
     
-    def __init__(self, base_url: str = "https://quotes.toscrape.com/", min_delay: int = 0):
+    def __init__(self, base_url: str = "https://quotes.toscrape.com/", min_delay: int = 6):
         """
         Initializes the crawler with connection pooling, User-Agent header, and robots.txt parsing.
         

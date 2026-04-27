@@ -60,7 +60,7 @@ def main():
                     
                 import json
                 with open(CRAWL_FILE, "w", encoding="utf-8") as f:
-                    json.dump(crawled_data, f, indent=4)
+                    json.dump(crawled_data, f, separators=(',', ':')) # Compact encoding to save space
                     
                 # 2. Build Index
                 indexer = Indexer() # Reset indexer to clear old state

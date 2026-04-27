@@ -184,11 +184,11 @@ class Indexer:
         """
         print(f"[*] Saving index to {index_filepath}...")
         with open(index_filepath, 'w', encoding='utf-8') as f:
-            json.dump(self.inverted_index, f, indent=4)
+            json.dump(self.inverted_index, f, separators=(',', ':'))  # Compact encoding to save space
             
         print(f"[*] Saving document registry to {registry_filepath}...")
         with open(registry_filepath, 'w', encoding='utf-8') as f:
-            json.dump(self.document_registry, f, indent=4)
+            json.dump(self.document_registry, f, separators=(',', ':'))
             
         print(f"\n[+] Save complete!")
         
