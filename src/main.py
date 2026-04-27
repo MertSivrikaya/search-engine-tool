@@ -22,11 +22,14 @@ def main():
     # System State
     indexer = Indexer()
     searcher = None
-    
+
+    # Ensure the data directory exists relative to where the script is run
+    os.makedirs("data", exist_ok=True)
+
     # File paths for saving/loading
-    CRAWL_FILE = "crawled_data.json"
-    INDEX_FILE = "index.json"
-    REGISTRY_FILE = "registry.json"
+    CRAWL_FILE = "data/crawled_data.json"
+    INDEX_FILE = "data/index.json"
+    REGISTRY_FILE = "data/registry.json"
 
     while True:
         try:

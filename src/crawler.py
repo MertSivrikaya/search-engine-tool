@@ -14,7 +14,7 @@ class Crawler:
     respects robots.txt, and strictly enforces politeness policies.
     """
     
-    def __init__(self, base_url: str = "https://quotes.toscrape.com/", min_delay: int = 6):
+    def __init__(self, base_url: str = "https://quotes.toscrape.com/", min_delay: int = 0):
         """
         Initializes the crawler with connection pooling, User-Agent header, and robots.txt parsing.
         

@@ -7,5 +7,5 @@ venv/
 env/
 
 # Crawler Data
-crawled_data.json
+data/crawled_data.json
 
