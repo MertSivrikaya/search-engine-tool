@@ -2,6 +2,7 @@ import unittest
 import json
 import os
 import tempfile
+import time
 
 from src.indexer import HTMLProcessor, Indexer
 
@@ -138,6 +139,37 @@ class TestIndexerIntegration(unittest.TestCase):
         
         # Verify the next_doc_id updated correctly so we don't overwrite
         self.assertEqual(indexer_b.next_doc_id, 3)
+
+    def test_build_performance(self) -> None:
+        """
+        Performance test verifying the O(1) dictionary mappings scale efficiently.
+        
+        Simulates indexing 1,000 documents to ensure processing stays under 1 second.
+        """
+        import time # Imported here if not at the top of the file
+        
+        # Create 1,000 mock pages
+        large_mock_data = {
+            f"https://example.com/page{i}": "<h1>Data</h1><p>structures are extremely fast</p>" 
+            for i in range(1000)
+        }
+        
+        temp_file = tempfile.NamedTemporaryFile(delete=False, mode='w', suffix='.json')
+        json.dump(large_mock_data, temp_file)
+        temp_file.close()
+        
+        indexer = Indexer()
+        
+        start_time = time.time()
+        indexer.build_index(temp_file.name)
+        execution_time = time.time() - start_time
+        
+        os.unlink(temp_file.name)
+        
+        # Assert it processed all 1000 docs successfully
+        self.assertEqual(len(indexer.document_registry), 1000)
+        # Assert it did it in under 1 second
+        self.assertLess(execution_time, 1.0)
 
 
 if __name__ == '__main__':

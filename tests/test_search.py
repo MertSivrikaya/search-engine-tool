@@ -2,6 +2,7 @@ import unittest
 import tempfile
 import json
 import os
+import time
 
 from src.search import SearchEngine
 from src.indexer import Indexer
@@ -93,6 +94,33 @@ class TestSearchEngine(unittest.TestCase):
         
         self.assertTrue(is_phrase_doc1)
         self.assertFalse(is_phrase_doc2)
+
+    def test_search_performance(self) -> None:
+        """
+        Performance test verifying the set intersection optimization.
+        
+        Searches across a massive index of 10,000 documents to ensure irrelevant 
+        documents are filtered instantly before heavy TF-IDF math occurs.
+        """
+        import time
+        
+        # Create an index where 10,000 docs have 'common', but only 1 has 'rare'
+        large_index = {
+            "common": {i: [1, [0]] for i in range(10000)},
+            "rare": {9999: [1, [1]]}
+        }
+        large_registry = {i: f"url{i}" for i in range(10000)}
+        
+        searcher = SearchEngine(large_index, large_registry)
+        
+        start_time = time.time()
+        # The engine must intersect the sets. It should instantly reduce 10,000 docs down to 1.
+        results = searcher.find("common rare")
+        execution_time = time.time() - start_time
+        
+        self.assertEqual(len(results), 1)
+        # It should be practically instantaneous (under 0.1 seconds)
+        self.assertLess(execution_time, 0.1)
 
 
 class TestSearchIntegration(unittest.TestCase):

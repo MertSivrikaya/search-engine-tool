@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
+import time
 
 import requests
 
@@ -233,6 +234,33 @@ class TestCrawler(unittest.TestCase):
         self.assertEqual(len(result), 2)
         self.assertIn("https://example.com/public", result)
         self.assertNotIn("https://example.com/admin", result)
+
+    @patch('src.crawler.Crawler.fetch_page')
+    def test_crawl_performance(self, mock_fetch: MagicMock) -> None:
+        """Performance test verifying the efficiency of the queue and visited set.
+        
+        Simulates parsing a large web graph (100 interconnected pages) to ensure
+        O(1) lookups prevent exponential time bloat.
+        
+        Args:
+            mock_fetch (MagicMock): The mocked fetch_page method.
+        """
+        
+        # Generate 100 mock pages, each linking to the next
+        mock_web = {f"https://example.com/page{i}": f"<html><body><a href='/page{i+1}'>Next</a></body></html>" for i in range(100)}
+        mock_web["https://example.com/"] = "<html><body><a href='/page0'>Start</a></body></html>"
+        
+        mock_fetch.side_effect = lambda url: mock_web.get(url, None)
+        self.crawler.rp.can_fetch = MagicMock(return_value=True)
+
+        start_time = time.time()
+        result = self.crawler.crawl()
+        execution_time = time.time() - start_time
+
+        # Assert all 101 pages were crawled
+        self.assertEqual(len(result), 101)
+        # Assert it processed the graph in under 1 second (proves efficient memory/queue usage)
+        self.assertLess(execution_time, 1.0)
 
 
 if __name__ == '__main__':
