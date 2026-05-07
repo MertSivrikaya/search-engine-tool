@@ -1,11 +1,14 @@
 import json
+
 from bs4 import BeautifulSoup
 import nltk
 from nltk.stem import PorterStemmer
 
+
 # Automatically download required NLTK data 
 nltk.download('punkt', quiet=True)
 nltk.download('punkt_tab', quiet=True)
+
 
 class HTMLProcessor:
     """
@@ -15,14 +18,18 @@ class HTMLProcessor:
     Pass 1: Identify HTML tags/structure using BeautifulSoup (Parse).
     Pass 2: Extract, clean, stem, and score the tokens (Tokenize).
     """
-    def __init__(self):
+    
+    def __init__(self) -> None:
+        """
+        Defines the HTML tags we want to track for zone indexing.
+        Also initializes the Porter Stemmer for consistent token normalization.
+        """
         self.extent_tags = {'title', 'h1', 'h2', 'h3', 'b', 'strong', 'em', 'i'}
         self.stemmer = PorterStemmer()
 
-    def tokenize(self, html_content):
+    def tokenize(self, html_content) -> dict:
         """
-        Parses HTML and returns a dictionary
-        containing both word postings and extent postings.
+        Parses HTML and returns a dictionary containing both word and extent postings.
 
         Intended output format:
         {
@@ -46,6 +53,13 @@ class HTMLProcessor:
                 "einstein": {
                     "1": [2, [4, 88]]
                 }
+
+        Args:
+            html_content (str): The raw HTML string to be parsed and tokenized.
+
+        Returns:
+            dict: A dictionary mapping stemmed words and HTML extent tags to their 
+                  respective frequencies and positional arrays.
         """
 
         soup = BeautifulSoup(html_content, 'html.parser')
@@ -138,6 +152,7 @@ class HTMLProcessor:
                              
         return final_index_data
 
+
 class Indexer:
     """
     Builds the Inverted Index and handles Document IDs.
@@ -148,9 +163,12 @@ class Indexer:
         self.processor = HTMLProcessor()
         self.next_doc_id = 1
 
-    def build_index(self, crawled_data_filepath):
+    def build_index(self, crawled_data_filepath) -> None:
         """
         Reads the crawled data, assigns DocIDs, and builds the global Inverted Index.
+        
+        Args:
+            crawled_data_filepath (str): The file path to the JSON file containing raw HTML.
         """
         print("[*] Building inverted index...")
         with open(crawled_data_filepath, 'r', encoding='utf-8') as f:
@@ -178,9 +196,16 @@ class Indexer:
 
         print(f"\n[+] Successfully indexed {len(self.document_registry)} documents.")
 
-    def save_index(self, index_filepath, registry_filepath):
+    def save_index(self, index_filepath, registry_filepath) -> None:
         """
         Saves the Inverted Index and Document Registry to the file system.
+        
+        Utilizes strict JSON separators to minify the output, heavily optimizing 
+        storage footprint and load times.
+        
+        Args:
+            index_filepath (str): The destination file path for the inverted index.
+            registry_filepath (str): The destination file path for the document registry.
         """
         print(f"[*] Saving index to {index_filepath}...")
         with open(index_filepath, 'w', encoding='utf-8') as f:
@@ -192,9 +217,13 @@ class Indexer:
             
         print(f"\n[+] Save complete!")
         
-    def load_index(self, index_filepath, registry_filepath):
+    def load_index(self, index_filepath, registry_filepath) -> None:
         """
-        Loads the Inverted Index and Document Registry from the file system.
+        Loads the Inverted Index and Document Registry from the file system into memory.
+        
+        Args:
+            index_filepath (str): The file path to the saved inverted index.
+            registry_filepath (str): The file path to the saved document registry.
         """
         print(f"[*] Loading index from {index_filepath}...")
         with open(index_filepath, 'r', encoding='utf-8') as f:

@@ -1,20 +1,37 @@
 import math
+
 import nltk
 from nltk.stem import PorterStemmer
+
 
 class SearchEngine:
     """
     Handles the query processing, interval intersection, and TF-IDF ranking.
     """
-    def __init__(self, inverted_index, document_registry):
+    def __init__(self, inverted_index, document_registry) -> None:
+        """
+        Initializes the search engine with the pre-compiled index and registry.
+        
+        Args:
+            inverted_index (dict): The global index mapping terms to document postings.
+            document_registry (dict): The registry mapping integer DocIDs to URL strings.
+        """
         self.index = inverted_index
         self.registry = document_registry
         self.total_docs = len(document_registry)
         self.stemmer = PorterStemmer()
         self.extent_tags = {'title': 3.0, 'h1': 2.0, 'h2': 1.5, 'b': 1.2, 'strong': 1.2} # Boost multipliers
 
-    def _tokenize_query(self, query_string):
-        """Processes the query using the exact same pipeline as the Indexer."""
+    def _tokenize_query(self, query_string) -> list:
+        """
+        Processes the query using the exact same NLP pipeline as the Indexer.
+        
+        Args:
+            query_string (str): The raw search phrase entered by the user.
+            
+        Returns:
+            list: A list of valid, alphanumeric, stemmed tokens.
+        """
         tokens = nltk.word_tokenize(query_string)
         valid_tokens = []
         for token in tokens:
@@ -23,10 +40,12 @@ class SearchEngine:
                 valid_tokens.append(self.stemmer.stem(token.lower()))
         return valid_tokens
 
-    def print_word_index(self, word):
+    def print_word_index(self, word) -> None:
         """
-        Executes the 'print' command.
-        Prints the posting list for a specific word.
+        Executes the 'print' command. Prints the posting list for a specific word.
+        
+        Args:
+            word (str): The raw word to search for in the index.
         """
         stemmed_word = self.stemmer.stem(word.lower())
         if stemmed_word in self.index:
@@ -35,10 +54,18 @@ class SearchEngine:
         else:
             print(f"\n[-] Word '{word}' not found in the index.")
 
-    def find(self, query_string):
+    def find(self, query_string) -> list:
         """
-        Executes the 'find' command.
-        Retrieves, ranks, and returns the relevant URLs for a query phrase.
+        Executes the 'find' command. Retrieves and ranks URLs for a query phrase.
+        
+        Processes conjunctive queries (Boolean AND) and ranks valid documents using 
+        TF-IDF, HTML Zone Extent multipliers, and Exact Phrase Proximity boosting.
+        
+        Args:
+            query_string (str): The search phrase entered by the user.
+            
+        Returns:
+            list: A sorted list of tuples formatted as (doc_score, url).
         """
         tokens = self._tokenize_query(query_string)
         if not tokens:
@@ -98,8 +125,18 @@ class SearchEngine:
         ranked_results.sort(key=lambda x: x[0], reverse=True)
         return ranked_results
 
-    def _check_exact_phrase(self, tokens, doc_id):
-        """Checks if tokens appear sequentially using positional tracking."""
+    def _check_exact_phrase(self, tokens, doc_id) -> bool:
+        """
+        Checks if tokens appear sequentially using positional tracking.
+        
+        Args:
+            tokens (list): The list of parsed query tokens.
+            doc_id (int): The integer ID of the document being evaluated.
+            
+        Returns:
+            bool: True if the tokens appear as an exact sequential phrase, False otherwise.
+        """
+
         # Grab the position lists for all query words in this document
         pos_lists = [self.index[token][doc_id][1] for token in tokens]
         

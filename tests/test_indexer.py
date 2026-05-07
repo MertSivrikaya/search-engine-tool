@@ -2,13 +2,18 @@ import unittest
 import json
 import os
 import tempfile
+
 from src.indexer import HTMLProcessor, Indexer
 
+
 class TestHTMLProcessor(unittest.TestCase):
-    def setUp(self):
+    """Test suite for the HTMLProcessor, verifying NLP tokenization and extent parsing."""
+    
+    def setUp(self) -> None:
+        """Initializes the HTMLProcessor instance before each test."""
         self.processor = HTMLProcessor()
 
-    def test_tokenization_and_positions(self):
+    def test_tokenization_and_positions(self) -> None:
         """Tests that punctuation is stripped, words are stemmed, and positions are absolute."""
         html = "<p>Hello world, hello!</p>"
         result = self.processor.tokenize(html)
@@ -23,8 +28,14 @@ class TestHTMLProcessor(unittest.TestCase):
         self.assertEqual(result["world"][0], 1)
         self.assertEqual(result["world"][1], [1])
 
-    def test_extent_extraction_and_nested_merging(self):
-        """Tests that nested HTML tags create perfect, merged interval extents."""
+    def test_extent_extraction_and_nested_merging(self) -> None:
+        """
+        Tests that nested HTML tags create perfect, merged interval extents.
+        
+        This explicitly verifies the logic designed to prevent extent fragmentation 
+        when dealing with nested tags like <h1><b>Text</b></h1>.
+        """
+
         # This is the exact edge case we engineered the merging logic for
         html = "<h1>The <b>quick brown</b> fox</h1>"
         result = self.processor.tokenize(html)
@@ -42,8 +53,13 @@ class TestHTMLProcessor(unittest.TestCase):
         self.assertIn("_EXTENT_h1", result)
         self.assertEqual(result["_EXTENT_h1"], [[0, 3]])
 
-    def test_quote_integrity_no_stopwords(self):
-        """Tests that function words are not thrown out, preserving famous quotes."""
+    def test_quote_integrity_no_stopwords(self) -> None:
+        """
+        Tests that function words are not thrown out, preserving famous quotes.
+        
+        Since the domain is quotes.toscrape.com, traditional NLP stopwords (to, be, or) 
+        must remain in the index to allow exact phrase proximity matching.
+        """
         html = "<p>to be or not to be</p>"
         result = self.processor.tokenize(html)
         
@@ -55,8 +71,15 @@ class TestHTMLProcessor(unittest.TestCase):
 
 
 class TestIndexerIntegration(unittest.TestCase):
-    def setUp(self):
-        # Create a mock crawled_data.json structure
+    """Integration test suite for the Indexer, verifying file I/O and global index construction."""
+
+    def setUp(self) -> None:
+        """
+        Creates temporary mock crawled data files for safe I/O testing.
+        
+        Utilizes the tempfile library to ensure tests do not overwrite actual 
+        project data during execution.
+        """
         self.mock_crawled_data = {
             "https://example.com/1": "<h1>Data structures</h1><p>are fun</p>",
             "https://example.com/2": "<title>Data</title>"
@@ -73,13 +96,13 @@ class TestIndexerIntegration(unittest.TestCase):
         self.temp_registry_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
         self.temp_registry_file.close()
 
-    def tearDown(self):
-        # Clean up the temporary files after the tests run
+    def tearDown(self) -> None:
+        """Cleans up the temporary files from the filesystem after tests complete."""
         os.unlink(self.temp_crawl_file.name)
         os.unlink(self.temp_index_file.name)
         os.unlink(self.temp_registry_file.name)
 
-    def test_build_index(self):
+    def test_build_index(self) -> None:
         """Tests that the indexer correctly maps URLs to DocIDs and merges terms globally."""
         indexer = Indexer()
         indexer.build_index(self.temp_crawl_file.name)
@@ -97,8 +120,9 @@ class TestIndexerIntegration(unittest.TestCase):
         # Check that doc 1 recorded 'data' at position 0
         self.assertEqual(indexer.inverted_index["data"][1][1], [0])
 
-    def test_save_and_load_state(self):
-        """Tests that the index can be serialized to disk and perfectly restored."""
+    def test_save_and_load_state(self) -> None:
+        """Tests that the minified JSON index can be serialized to disk and perfectly restored."""
+        
         # 1. Build and Save
         indexer_a = Indexer()
         indexer_a.build_index(self.temp_crawl_file.name)
@@ -114,6 +138,7 @@ class TestIndexerIntegration(unittest.TestCase):
         
         # Verify the next_doc_id updated correctly so we don't overwrite
         self.assertEqual(indexer_b.next_doc_id, 3)
+
 
 if __name__ == '__main__':
     unittest.main()

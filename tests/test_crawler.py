@@ -1,11 +1,15 @@
 import unittest
-import requests
 from unittest.mock import patch, MagicMock
+
+import requests
+
 from src.crawler import Crawler
 
-class TestCrawler(unittest.TestCase):
 
-    def setUp(self):
+class TestCrawler(unittest.TestCase):
+    """Test suite for the web crawler, covering unit, integration, and performance testing."""
+
+    def setUp(self) -> None:
         """Initialize a crawler instance with the network initialization mocked out."""
         
         # By patching _load_robots_txt, we prevent the crawler from hitting the 
@@ -14,8 +18,13 @@ class TestCrawler(unittest.TestCase):
             self.crawler = Crawler(base_url="https://example.com/", min_delay=0)
 
     @patch('src.crawler.requests.Session.get')
-    def test_fetch_page_success(self, mock_get):
-        """Test fetch_page returns HTML on a 200 OK response."""
+    def test_fetch_page_success(self, mock_get) -> None:
+        """
+        Tests that fetch_page successfully returns HTML on a 200 OK HTTP response.
+        
+        Args:
+            mock_get (MagicMock): The mocked requests.Session.get method.
+        """
         
         # Create a mock (simulated) response object to simulate a successful HTTP request
         # We only need to set the attributes that our crawler's fetch_page method uses: status_code and text.
@@ -32,8 +41,13 @@ class TestCrawler(unittest.TestCase):
         self.assertEqual(result, "<html>Success</html>")
 
     @patch('src.crawler.requests.Session.get')
-    def test_fetch_page_failure(self, mock_get):
-        """Test fetch_page returns None on a 404 error."""
+    def test_fetch_page_failure(self, mock_get) -> None:
+        """
+        Tests that fetch_page catches RequestExceptions and returns None on a 404 error.
+        
+        Args:
+            mock_get (MagicMock): The mocked requests.Session.get method.
+        """
         
         mock_response = MagicMock()
         mock_response.status_code = 404
@@ -44,8 +58,8 @@ class TestCrawler(unittest.TestCase):
         result = self.crawler.fetch_page("https://example.com/404")
         self.assertIsNone(result)
 
-    def test_robots_txt_logic(self):
-        """Verify the robotparser correctly handles Disallow rules."""
+    def test_robots_txt_logic(self) -> None:
+        """Verifies the robotparser correctly enforces Disallow/Allow rules."""
         
         # Since setUp mocked out the real internet, the parser is empty.
         # We can safely inject our own rules to test the logic.
@@ -59,11 +73,17 @@ class TestCrawler(unittest.TestCase):
         self.assertFalse(self.crawler.rp.can_fetch(self.crawler.user_agent_name, "https://example.com/private/secret"))
 
     @patch('src.crawler.Crawler.fetch_page')
-    def test_crawl_loop_prevention(self, mock_fetch):
+    def test_crawl_loop_prevention(self, mock_fetch) -> None:
         """
-        Integration test: Verify the crawler successfully navigates a mocked website graph,
-        follows links, and avoids infinite loops.
+        Integration test verifying graph navigation and infinite loop avoidance.
+        
+        Simulates a cyclic graph (A -> B -> A) to ensure the 'visited' set prevents 
+        redundant processing.
+        
+        Args:
+            mock_fetch (MagicMock): The mocked fetch_page method.
         """
+
         # 1. Build a mock web dictionary
         mock_web = {
             "https://example.com/": """
@@ -104,10 +124,12 @@ class TestCrawler(unittest.TestCase):
         self.assertIn("<h1>Page 2</h1>", result["https://example.com/page2"])
 
     @patch('src.crawler.Crawler.fetch_page')
-    def test_crawl_dead_end(self, mock_fetch):
+    def test_crawl_dead_end(self, mock_fetch) -> None:
         """
-        Integration test: Verify the crawler handles an "orphan page" gracefully
-        when BeautifulSoup finds zero <a> tags.
+        Integration test verifying crawler termination on orphan pages (no out-links).
+        
+        Args:
+            mock_fetch (MagicMock): The mocked fetch_page method.
         """
         mock_web = {
             "https://example.com/": """
@@ -130,10 +152,14 @@ class TestCrawler(unittest.TestCase):
         self.assertIn("<h1>Dead End</h1>", result["https://example.com/"])
 
     @patch('src.crawler.Crawler.fetch_page')
-    def test_crawl_external_link_trap(self, mock_fetch):
+    def test_crawl_external_link_trap(self, mock_fetch) -> None:
         """
-        Integration test: Verify the crawler strictly enforces domain boundaries
-        and ignores links to external websites.
+        Integration test verifying strict domain boundary enforcement.
+        
+        Ensures links pointing outside the base_url domain are not added to the frontier.
+        
+        Args:
+            mock_fetch (MagicMock): The mocked fetch_page method.
         """
         mock_web = {
             "https://example.com/": """
@@ -163,10 +189,12 @@ class TestCrawler(unittest.TestCase):
         self.assertNotIn("https://youtube.com/video", result)
 
     @patch('src.crawler.Crawler.fetch_page')
-    def test_crawl_blocked_path(self, mock_fetch):
+    def test_crawl_blocked_path(self, mock_fetch) -> None:
         """
-        Integration test: Verify the crawler obeys robots.txt rules for dynamically
-        discovered links during the crawl.
+        Integration test verifying dynamic link discovery against robots.txt.
+        
+        Args:
+            mock_fetch (MagicMock): The mocked fetch_page method.
         """
         mock_web = {
             "https://example.com/": """
@@ -205,6 +233,7 @@ class TestCrawler(unittest.TestCase):
         self.assertEqual(len(result), 2)
         self.assertIn("https://example.com/public", result)
         self.assertNotIn("https://example.com/admin", result)
+
 
 if __name__ == '__main__':
     unittest.main()

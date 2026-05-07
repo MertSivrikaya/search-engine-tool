@@ -1,11 +1,13 @@
 import time
-import requests
-from urllib.parse import urljoin
-from urllib import robotparser
-from bs4 import BeautifulSoup
 from collections import deque
 from typing import Dict, Optional
 from random import uniform
+from urllib.parse import urljoin
+from urllib import robotparser
+
+import requests
+from bs4 import BeautifulSoup
+
 
 class Crawler:
     """
@@ -13,13 +15,13 @@ class Crawler:
     respects robots.txt, and strictly enforces politeness policies.
     """
     
-    def __init__(self, base_url: str = "https://quotes.toscrape.com/", min_delay: int = 6):
+    def __init__(self, base_url: str = "https://quotes.toscrape.com/", min_delay: int = 6) -> None:
         """
         Initializes the crawler with connection pooling, User-Agent header, and robots.txt parsing.
         
         Args:
-            base_url (str): The starting URL to crawl.
-            min_delay (int): Minimum seconds to wait between requests.
+            base_url (str): The starting URL to crawl. Defaults to the quotes test site.
+            min_delay (int): Minimum seconds to wait between requests to ensure politeness.
         """
         print(f"[*] Initializing...")
 
@@ -39,9 +41,12 @@ class Crawler:
         self.rp = robotparser.RobotFileParser()
         self._load_robots_txt()
 
-    def _load_robots_txt(self):
+    def _load_robots_txt(self) -> None:
         """
-        Fetches and parses the robots.txt file using our custom session.
+        Fetches and parses the robots.txt file using the custom session.
+        
+        Applies ethical crawling standards by defaulting to 'Disallow All' on permission 
+        errors (401/403) and 'Allow All' on missing files (404).
         """
         robots_url = urljoin(self.base_url, "/robots.txt")
         print(f"[*] Fetching {robots_url}...")
@@ -74,7 +79,13 @@ class Crawler:
 
     def fetch_page(self, url: str) -> Optional[str]:
         """
-        Fetches the HTML content of a given URL with with randomized politeness delay.
+        Fetches the HTML content of a given URL with a randomized politeness delay.
+        
+        Args:
+            url (str): The target URL to fetch.
+            
+        Returns:
+            Optional[str]: The raw HTML text if the request is successful, otherwise None.
         """
         try:
             print(f"[*] Fetching: {url}")
@@ -99,6 +110,7 @@ class Crawler:
         """
         Crawls the website using a Queue (Frontier) and Visited Set to discover
         all internal links while preventing infinite loops.
+        
         Checks robots.txt permissions before adding URLs to the frontier.
         
         Returns:

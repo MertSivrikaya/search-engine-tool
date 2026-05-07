@@ -2,11 +2,22 @@ import unittest
 import tempfile
 import json
 import os
+
 from src.search import SearchEngine
 from src.indexer import Indexer
 
+
 class TestSearchEngine(unittest.TestCase):
-    def setUp(self):
+    """Test suite for the SearchEngine, verifying ranking algorithms and query processing."""
+    
+    def setUp(self) -> None:
+        """
+        Initializes a predictable mock registry and inverted index for testing math logic.
+        
+        Bypasses the HTML crawler/indexer entirely to strictly test the Vector Space 
+        math, TF-IDF calculation, and proximity Boolean logic.
+        """
+
         # A tiny, predictable mock registry
         self.mock_registry = {
             1: "https://example.com/quote1",
@@ -32,14 +43,15 @@ class TestSearchEngine(unittest.TestCase):
         
         self.searcher = SearchEngine(self.mock_index, self.mock_registry)
 
-    def test_tokenization(self):
+    def test_tokenization(self) -> None:
         """Tests that the searcher applies the same stemming/cleaning as the indexer."""
         tokens = self.searcher._tokenize_query("Hello, Worlds!!!")
         # 'Hello' -> 'hello', 'Worlds' -> 'world' (stemmed)
         self.assertEqual(tokens, ["hello", "world"])
 
-    def test_conjunctive_processing(self):
+    def test_conjunctive_processing(self) -> None:
         """Tests that documents must contain ALL query terms (Boolean AND)."""
+
         # "hello world" -> Doc 1 and 2 have both. Doc 3 only has "world".
         results = self.searcher.find("hello world")
         
@@ -52,8 +64,9 @@ class TestSearchEngine(unittest.TestCase):
         self.assertIn("https://example.com/quote2", urls)
         self.assertNotIn("https://example.com/quote3", urls)
 
-    def test_zone_boosting(self):
+    def test_zone_boosting(self) -> None:
         """Tests that words inside HTML extents receive a score multiplier."""
+
         # Search just for "hello". 
         # Both Doc 1 and Doc 2 have tf=1.
         # But Doc 2 has "hello" inside an _EXTENT_h1 (multiplier 2.0).
@@ -65,8 +78,9 @@ class TestSearchEngine(unittest.TestCase):
         # Doc 2's score should be exactly double Doc 1's score due to the 2.0 multiplier
         self.assertEqual(doc2_score, doc1_score * 2.0)
         
-    def test_exact_phrase_proximity(self):
+    def test_exact_phrase_proximity(self) -> None:
         """Tests that sequential words receive the 2.0x proximity boost."""
+
         # Search "hello world". 
         # Doc 1 has them at positions [0] and [1] -> Sequential!
         # Doc 2 has them at positions [0] and [2] -> Gap!
@@ -80,8 +94,13 @@ class TestSearchEngine(unittest.TestCase):
         self.assertTrue(is_phrase_doc1)
         self.assertFalse(is_phrase_doc2)
 
+
 class TestSearchIntegration(unittest.TestCase):
-    def setUp(self):
+    """Integration test suite verifying the pipeline from Raw HTML to Search Engine ranking."""
+    
+    def setUp(self) -> None:
+        """Sets up a temporary filesystem and runs the Indexer to feed the SearchEngine."""
+
         # 1. Create raw mock crawled data (HTML)
         self.mock_crawled_data = {
             "https://example.com/hamlet": "<h1>Hamlet</h1><p>to be or not to be</p>",
@@ -100,12 +119,12 @@ class TestSearchIntegration(unittest.TestCase):
         # 3. Hook up the SearchEngine to the Indexer's output
         self.searcher = SearchEngine(self.indexer.inverted_index, self.indexer.document_registry)
 
-    def tearDown(self):
-        # Clean up the temp file
+    def tearDown(self) -> None:
+        """Cleans up the temporary files from the filesystem."""
         os.unlink(self.temp_crawl_file.name)
 
-    def test_end_to_end_search(self):
-        """Tests the entire pipeline: Raw HTML -> Tokenizer -> Indexer -> SearchEngine"""
+    def test_end_to_end_search(self) -> None:
+        """Tests the entire pipeline: Raw HTML -> Tokenizer -> Indexer -> SearchEngine."""
         
         # Search for a quote from document 1
         results = self.searcher.find("to be or not to be")
@@ -121,6 +140,7 @@ class TestSearchIntegration(unittest.TestCase):
         results_h1 = self.searcher.find("descartes")
         self.assertEqual(len(results_h1), 1)
         self.assertEqual(results_h1[0][1], "https://example.com/descartes")
+
 
 if __name__ == '__main__':
     unittest.main()

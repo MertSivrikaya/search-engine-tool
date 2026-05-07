@@ -1,12 +1,28 @@
+"""
+Command-Line Interface (CLI) for the COMP3011 Search Engine.
+
+This module provides an interactive Read-Eval-Print Loop (REPL) shell 
+that allows users to trigger the web crawler, build the inverted index, 
+load existing index data from disk, and execute ranked TF-IDF searches.
+"""
+
 import os
 import sys
+import json
+
 from crawler import Crawler
 from indexer import Indexer
 from search import SearchEngine
 
+
 def main():
     """
-    The main Read-Eval-Print Loop (REPL) for the Search Engine CLI.
+    Initializes the main Read-Eval-Print Loop (REPL) for the Search Engine CLI.
+    
+    Provides an interactive terminal interface mapping string commands ('build', 
+    'load', 'print', 'find', 'quit') to their underlying engine operations. 
+    
+    Gracefully handles KeyboardInterrupts (Ctrl+C).
     """
     print("==================================================")
     print("   COMP3011 Search Engine - Initialization...   ")
@@ -58,7 +74,6 @@ def main():
                     print("[-] Crawl failed or returned no data.")
                     continue
                     
-                import json
                 with open(CRAWL_FILE, "w", encoding="utf-8") as f:
                     json.dump(crawled_data, f, separators=(',', ':')) # Compact encoding to save space
                     
@@ -121,6 +136,7 @@ def main():
         except KeyboardInterrupt:
             print("\n[*] Shutting down search engine. Goodbye!")
             sys.exit(0)
+
 
 if __name__ == "__main__":
     main()
